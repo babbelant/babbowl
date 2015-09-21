@@ -1,0 +1,26 @@
+#game {
+  width: 500px;
+  margin: 0 auto;
+}
+
+#bowl-button {
+  font-size: 20px;
+  width: 150px;
+  height: 40px;
+  background-color: #3879D9;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+}
+
+#scoreboard, #debug {
+  margin-top: 30px;
+  font-size: 24px;
+  font-family: monospace;
+}
+
+#debug {
+  margin-top: 30px;
+  font-size: 16px;
+}

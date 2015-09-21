@@ -44,6 +44,24 @@ function Game() {
   this.frames[this.frames.length - 1].extraRollPoints = [];
   this.frames[this.frames.length - 2].beforeLast = true;
 
+  function outputPins(pinNumber) {
+    var output = '';
+    for(var i = 0; i < pinNumber; i++) {
+      output += '💀';
+    }
+    for(var i = pinNumber; i < 10; i++) {
+      output += '📍';
+    }
+    return output;
+  }
+
+  function padLeft(number) {
+    var text = "" + number;
+    var pad = "____";
+    var paddedText = pad.substring(0, pad.length - text.length) + text;
+    return paddedText;
+  }
+
   return {
     frames: this.frames,
     currentFrame: function() {
@@ -61,8 +79,7 @@ function Game() {
 
       this.advanceGame();
 
-      printDebugLine("You knocked " + knockedDownPins + " down");
-      printDebugLine(this.scoreBoard());
+      return knockedDownPins;
     },
     advanceGame: function() {
       if (this.finished) {
@@ -129,19 +146,33 @@ function Game() {
       }
     },
     scoreBoard: function() {
-      var scoreBoard =  this.frames.map(function(frame, index) {
-        var frameDescription = (index + 1) + ": ";
-        if (frame.strike) {
-          frameDescription += "X";
-        } else if (frame.spare) {
-          frameDescription += "/";
-        } else {
-          frameDescription += frame.points();
-        }
-        return frameDescription;
-      }).join(' , ');
+      var points;
+      var scoreBoard;
 
-      scoreBoard += "  SCORE: " + this.score();
+      scoreBoard = this.frames.map(function(frame, index) {
+        var paddedText = padLeft(index+1);
+        var line = '' + (paddedText) + ' ';
+        points = frame.points();
+        line += outputPins(frame.points());
+        line += " -> " + frame.points();
+        return line;
+      }).join("\n");
+
+      var lastFrame = this.frames[this.frames.length - 1];
+      if (lastFrame.strike || lastFrame.spare) {
+        points = lastFrame.extraRollPoints[0] || 0;
+        var paddedText = padLeft("10.1");
+        scoreBoard += "\n" + paddedText + " " + outputPins(points);
+        scoreBoard += " -> " + points;
+      }
+      if (lastFrame.strike) {
+        points = lastFrame.extraRollPoints[1] || 0;
+        var paddedText = padLeft("10.2");
+        scoreBoard += "\n" + paddedText + " " + outputPins(points);
+        scoreBoard += " -> " + points;
+      }
+
+      scoreBoard += "\n score: " + this.score();
 
       return scoreBoard;
     }
@@ -149,14 +180,17 @@ function Game() {
 }
 
 function printDebugLine(line) {
-  debugLine = document.createElement('div');
-  debugLine.textContent = line;
-  document.getElementById('debug').appendChild(debugLine);
+  document.getElementById('debug').innerText += '\n' + line;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('scoreboard').innerText = game.scoreBoard();
   document.getElementById('bowl-button').addEventListener('click', function() {
-    game.bowl();
+    var knockedDownPins = game.bowl();
+    document.getElementById('scoreboard').innerText = game.scoreBoard();
+    if (knockedDownPins) {
+      printDebugLine(knockedDownPins + " knocked down!");
+    }
   });
 });
 
