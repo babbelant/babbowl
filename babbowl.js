@@ -1,132 +1,135 @@
 function randomPinCount(max) {
   var maxPinCount = max || 10;
-  // return Math.floor(Math.random() * 100) % (maxPinCount + 1);
-  return 10;
+  return Math.floor(Math.random() * 100) % (maxPinCount + 1);
 }
 
 function Frame() {
   this.strike = false;
   this.spare = false;
-  this.points = 0;
+  this.rollPoints = [];
   this.finished = false;
+
+
+  var frame = {
+    finished: this.finished,
+    get strike() { return this.rollPoints[0] && this.rollPoints[0] == 10; },
+    get spare() { return this.rollPoints[0] && this.rollPoints[1] && (this.rollPoints[0] + this.rollPoints[1] == 10); },
+    rollPoints: this.rollPoints,
+    pinsLeft: function() {
+      return 10 - this.points();
+    },
+    points: function() {
+      return (this.rollPoints[0] || 0) + (this.rollPoints[1] || 0);
+    }
+  };
+
+  return frame;
 }
 
-Frame.prototype.pinsLeft = function() {
-  return 10 - this.points;
-};
-
 function Game() {
-  this.MAX_FRAMES = 10;
+  this.NUMBER_OF_FRAMES = 10;
   this.currentFrameNumber = 1;
   this.currentRoll = 1;
   this.frames = [];
-  for (var i = 0; i < this.MAX_FRAMES; i++) {
+  for (var i = 0; i < this.NUMBER_OF_FRAMES; i++) {
     this.frames.push(new Frame());
   }
+
+  this.frames[this.frames.length - 1].last = true;
+  this.frames[this.frames.length - 1].extraRollPoints = [];
+  this.frames[this.frames.length - 2].beforeLast = true;
 }
 
 Game.prototype.currentFrame = function() {
   return this.frames[this.currentFrameNumber - 1];
 };
 
-Game.prototype.inLastFrame = function() {
-  return this.currentFrameNumber == this.MAX_FRAMES;
+Game.prototype.getTwoNextRolePoints = function(currentFrame, index) {
+  if (currentFrame.last) {
+    return (currentFrame.extraRollPoints[0] + currentFrame.extraRollPoints[1])|| 0;
+  } else if (currentFrame.beforeLast) {
+    lastFrame = this.frames[index+1];
+    return (lastFrame.rollPoints[0] + lastFrame.extraRollPoints[0]) || 0;
+  } else {
+    var nextFrame = this.frames[index+1];
+    if (nextFrame.strike) {
+      return (10 + this.frames[index+2].rollPoints[0]) || 0;
+    } else {
+      return (nextFrame.rollPoints[0] + nextFrame.rollPoints[1]) || 0;
+    }
+  }
 };
 
-Game.prototype.score  = function() {
+Game.prototype.getNextRolePoints = function(currentFrame, index) {
+  if (currentFrame.last) {
+    return currentFrame.extraRollPoints[0] || 0;
+  } else {
+    var nextFrame = this.frames[index+1];
+    return nextFrame.rollPoints[0] || 0;
+  }
+};
+
+Game.prototype.score = function() {
+  var game = this;
   return this.frames.reduce(function(score, frame, index, frames) {
-    if (frame.finished === false) {
-      return score;
-    } else {
-      if (frame.strike) {
-        if (index == this.MAX_FRAMES - 1) {
-          if (frame.finished) {
-            return score + frame.points;
-          } else {
-            return score;
-          }
-        }
-        else if (frames[index+1].finished && frames[index+2].finished) {
-          frameScore = frame.points + frames[index+1].points + frames[index+2].points;
-          return score + frameScore;
-        } else {
-          return score;
-        }
-      } else if (frame.spare) {
-        if (frames[index+1].finished) {
-          frameScore = frame.points + frames[index+1].points;
-          return score + frameScore;
-        } else {
-          return score;
-        }
-      } else {
-        return score + frame.points;
-      }
+    var result = score + frame.points();
+
+    if (frame.strike) {
+      result += game.getTwoNextRolePoints(frame, index);
     }
+
+    if (frame.spare) {
+      result += game.getNextRolePoints(frame, index);
+    }
+
+    return result;
   }, 0);
 };
 
 Game.prototype.advanceGame = function() {
-  if (this.inLastFrame()) {
-    if (this.currentFrame.strike || this.currentFrame.spare) {
-      if (this.currentRoll < 3) {
+  if (this.finished) {
+    return;
+  }
+
+  var currentFrame = this.currentFrame();
+
+  if (currentFrame.last) {
+    var extraRollsNeeded = currentFrame.strike || currentFrame.spare;
+    if (this.currentRoll < 2 || (extraRollsNeeded && this.currentRoll < 3)) {
         this.currentRoll += 1;
-      } else {
-        this.currentFrame().finished = true;
-        this.currentFrameNumber = null;
-        this.currentRoll = null;
-      }
     } else {
-      if (this.currentRoll < 2) {
-        this.currentRoll += 1;
-      } else {
-        this.currentFrame().finished = true;
-        this.currentFrameNumber = null;
-        this.currentRoll = null;
-      }
+      this.finished = true;
     }
   } else {
-    this.currentFrame().finished = true;
-    this.currentFrameNumber += 1;
-    this.currentRoll = 1;
+    if (currentFrame.strike || currentFrame.spare || this.currentRoll == 2) {
+      currentFrame.finished = true;
+      this.currentFrameNumber += 1;
+      this.currentRoll = 1;
+    } else {
+      this.currentRoll = 2;
+    }
   }
 };
 
 Game.prototype.bowl = function() {
-  if (this.ended()) {
+  if (this.finished) {
     printDebugLine("Game has ended. No rolls left.");
     return;
   }
 
-  var knockedDownPins;
   var currentFrame = this.currentFrame();
+  var knockedDownPins = randomPinCount(currentFrame.pinsLeft());
 
-  if (this.currentRoll == 1) {
-    knockedDownPins = randomPinCount();
-    currentFrame.points = knockedDownPins;
-
-    if (currentFrame.points == 10) {
-      currentFrame.strike = true;
-      this.advanceGame();
-    } else {
-      this.currentRoll = 2;
-    }
-  } else if (this.currentRoll == 2) {
-    knockedDownPins = randomPinCount(currentFrame.pinsLeft());
-    currentFrame.points += knockedDownPins;
-
-    if (currentFrame.points == 10) {
-      currentFrame.spare = true;
-    }
-
-    this.advanceGame();
+  if (currentFrame.last && (currentFrame.strike || currentFrame.spare)) {
+    currentFrame.extraRollPoints.push(knockedDownPins);
+  } else {
+    currentFrame.rollPoints.push(knockedDownPins);
   }
 
-  return knockedDownPins;
-};
+  this.advanceGame();
 
-Game.prototype.ended = function() {
-  return this.currentFrame == this.MAX_FRAMES && this.currentRoll == 2;
+  printDebugLine("You knocked " + knockedDownPins + " down");
+  printDebugLine(this.scoreBoard());
 };
 
 Game.prototype.scoreBoard = function() {
@@ -136,11 +139,11 @@ Game.prototype.scoreBoard = function() {
       frameDescription += "X";
     } else if (frame.spare) {
       frameDescription += "/";
-    } else if (frame.finished) {
-      frameDescription += frame.points;
+    } else {
+      frameDescription += frame.points();
     }
     return frameDescription;
-  }).join(' |||| ');
+  }).join(' , ');
 
   scoreBoard += "  SCORE: " + this.score();
 
@@ -148,16 +151,14 @@ Game.prototype.scoreBoard = function() {
 };
 
 function printDebugLine(line) {
-  debugLine = document.createElement('p');
+  debugLine = document.createElement('div');
   debugLine.textContent = line;
   document.getElementById('debug').appendChild(debugLine);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('bowl-button').addEventListener('click', function() {
-    var pinsKnockedDown = game.bowl();
-    // printDebugLine("You knocked " + pinsKnockedDown + " down");
-    printDebugLine(game.scoreBoard());
+    game.bowl();
   });
 });
 
