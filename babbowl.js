@@ -9,8 +9,7 @@ function Frame() {
   this.rollPoints = [];
   this.finished = false;
 
-
-  var frame = {
+  return {
     finished: this.finished,
     get strike() { return this.rollPoints[0] && this.rollPoints[0] == 10; },
     get spare() { return this.rollPoints[0] && this.rollPoints[1] && (this.rollPoints[0] + this.rollPoints[1] == 10); },
@@ -22,19 +21,17 @@ function Frame() {
       return (this.rollPoints[0] || 0) + (this.rollPoints[1] || 0);
     }
   };
-
-  return frame;
 }
 
 function Game() {
   this.NUMBER_OF_FRAMES = 10;
   this.currentFrameNumber = 1;
   this.currentRoll = 1;
+
   this.frames = [];
   for (var i = 0; i < this.NUMBER_OF_FRAMES; i++) {
     this.frames.push(new Frame());
   }
-
   this.frames[this.frames.length - 1].last = true;
   this.frames[this.frames.length - 1].extraRollPoints = [];
   this.frames[this.frames.length - 2].beforeLast = true;
@@ -47,13 +44,14 @@ Game.prototype.currentFrame = function() {
 Game.prototype.getTwoNextRolePoints = function(currentFrame, index) {
   if (currentFrame.last) {
     return (currentFrame.extraRollPoints[0] + currentFrame.extraRollPoints[1])|| 0;
-  } else if (currentFrame.beforeLast) {
-    lastFrame = this.frames[index+1];
-    return (lastFrame.rollPoints[0] + lastFrame.extraRollPoints[0]) || 0;
   } else {
     var nextFrame = this.frames[index+1];
     if (nextFrame.strike) {
-      return (10 + this.frames[index+2].rollPoints[0]) || 0;
+      if (nextFrame.last) {
+        return (10 + nextFrame.extraRollPoints[0]) || 0;
+      } else {
+        return (10 + this.frames[index+2].rollPoints[0]) || 0;
+      }
     } else {
       return (nextFrame.rollPoints[0] + nextFrame.rollPoints[1]) || 0;
     }
