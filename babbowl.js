@@ -147,32 +147,50 @@ function Game() {
     },
     scoreBoard: function() {
       var points;
-      var scoreBoard;
+      var scoreBoard = '';
 
-      scoreBoard = this.frames.map(function(frame, index) {
+      scoreBoard += "score: " + this.score() + "\n\n";
+
+      scoreBoard += this.frames.map(function(frame, index) {
         var paddedText = padLeft(index+1);
         var line = '' + (paddedText) + ' ';
         points = frame.points();
         line += outputPins(frame.points());
-        line += " -> " + frame.points();
+        if (frame.strike) {
+          line += " -> X";
+        } else if (frame.spare) {
+          line += " -> /";
+        } else {
+          line += " -> " + points;
+        }
         return line;
       }).join("\n");
 
       var lastFrame = this.frames[this.frames.length - 1];
+
       if (lastFrame.strike || lastFrame.spare) {
         points = lastFrame.extraRollPoints[0] || 0;
-        var paddedText = padLeft("10.1");
-        scoreBoard += "\n" + paddedText + " " + outputPins(points);
-        scoreBoard += " -> " + points;
-      }
-      if (lastFrame.strike) {
-        points = lastFrame.extraRollPoints[1] || 0;
-        var paddedText = padLeft("10.2");
-        scoreBoard += "\n" + paddedText + " " + outputPins(points);
-        scoreBoard += " -> " + points;
+        scoreBoard += "\n" + padLeft("10.1") + " " + outputPins(points);
+        if (lastFrame.strike) {
+          scoreBoard += " -> X";
+        } else if (lastFrame.spare) {
+          scoreBoard += " -> /";
+        } else {
+          scoreBoard += " -> " + points;
+        }
       }
 
-      scoreBoard += "\n score: " + this.score();
+      if (lastFrame.strike) {
+        points = lastFrame.extraRollPoints[1] || 0;
+        scoreBoard += "\n" + padLeft("10.2") + " " + outputPins(points);
+        if (lastFrame.strike) {
+          scoreBoard += " -> X";
+        } else if (lastFrame.spare) {
+          scoreBoard += " -> /";
+        } else {
+          scoreBoard += " -> " + points;
+        }
+      }
 
       return scoreBoard;
     }

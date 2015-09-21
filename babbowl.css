@@ -1,9 +1,11 @@
 #game {
   width: 500px;
   margin: 0 auto;
+  text-align: center
 }
 
 #bowl-button {
+  margin-top: 30px;
   font-size: 20px;
   width: 150px;
   height: 40px;
